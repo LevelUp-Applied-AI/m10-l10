@@ -1,7 +1,8 @@
-"""Vendored from Module 9 Week B. DO NOT MODIFY.
+"""The 15 supported question shapes the W9B mapper recognizes. DO NOT MODIFY.
 
-The 15 supported question shapes the W9B mapper recognizes. Returned in
-the 422 detail payload when an unsupported question is rejected.
+Returned in the 422 detail payload when an unsupported question is
+rejected. Paired with ``mapper.py``'s ``_PATTERNS`` list — the two files
+are kept in sync as a single contract.
 """
 
 SUPPORTED_PATTERNS = (
