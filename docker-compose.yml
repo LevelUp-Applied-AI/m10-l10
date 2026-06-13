@@ -1,0 +1,16 @@
+# Lab-level Docker Compose — api + web only.
+#
+# The four-service stack (api + web + neo4j + weaviate) is the Integration
+# task's deliverable. The Lab stack assumes Neo4j and Weaviate are
+# running externally (the learner started them via the M9/M8 Compose
+# stacks, or via `docker compose` in the Integration repo).
+#
+# TODO: author this file.
+# Required:
+# - service `api` builds from ./api, env_file: .env, healthcheck on
+#   /healthz, ports 8000:8000.
+# - service `web` builds from ./web, environment NEXT_PUBLIC_API_URL set
+#   to http://localhost:8000, ports 3000:3000, depends_on api with
+#   condition: service_healthy.
+
+services: {}
