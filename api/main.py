@@ -7,7 +7,7 @@ Discipline gates the autograder enforces:
   generator are constructed exactly once per process inside `lifespan`.
 - `CORSMiddleware` is registered with `allow_origins=[WEB_ORIGIN]`.
 - `/extract`, `/kg/query`, `/rag/answer` use Pydantic shapes from
-  `models.py` (no anonymous dicts; no `.dict()` v1 idioms).
+  `models.py` (no anonymous dicts; use Pydantic v2 idioms (model_dump, not the deprecated v1 serialization shortcut)).
 - `/kg/query` converts `UnsupportedQueryError` to 422 with structured
   detail (`{"reason": "unsupported_question", "supported_patterns": [...]}`).
 - `/readyz` probes Neo4j (`RETURN 1`) AND Weaviate (`client.is_ready()`)
