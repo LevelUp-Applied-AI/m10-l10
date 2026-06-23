@@ -34,7 +34,13 @@ def assemble_prompt(question: str, chunks: list[dict]) -> Tuple[str, dict[int, d
     # TODO: walk the chunks list, build numbered source lines, and call
     #       PROMPT_TEMPLATE.format(...). Return the prompt string and the
     #       index→chunk mapping. Index starts at 1, not 0.
-    raise NotImplementedError
+    numbered = {}
+    sources = []
+    for i, chunk in enumerate(chunks, start=1):
+        numbered[i] = chunk
+        sources.append(f"[{i}] {chunk['text']}")
+    prompt_str = PROMPT_TEMPLATE.format(sources="\n".join(sources), question=question)
+    return prompt_str, numbered
 
 
 def extract_citations(answer: str, numbered: dict[int, dict]) -> list[dict]:
@@ -47,7 +53,16 @@ def extract_citations(answer: str, numbered: dict[int, dict]) -> list[dict]:
     # TODO: iterate CITATION_PATTERN.finditer(answer), look up each index
     #       in `numbered`, and emit one {"chunk_id", "score"} dict per
     #       unique index that maps to a real retrieved chunk.
-    raise NotImplementedError
+    citations = []
+    seen = set()
+    for match in CITATION_PATTERN.finditer(answer):
+        index = int(match.group(1))
+        if index in numbered and index not in seen:
+            chunk = numbered[index]
+            score = max(0.0, min(1.0, 1.0 - chunk.get("distance", 1.0)))
+            citations.append({"chunk_id": chunk["chunk_id"], "score": score})
+            seen.add(index)
+    return citations
 
 
 def compose_rag(question: str, embedder, weaviate_client, generator, k: int = 4) -> dict:
@@ -74,4 +89,38 @@ def compose_rag(question: str, embedder, weaviate_client, generator, k: int = 4)
     # 6. If no citations resolved → return the sentinel-shaped dict.
     # 7. confidence = mean(citation scores), clipped to [0, 1].
     # 8. Return {"answer": raw, "citations": citations, "confidence": confidence}.
-    raise NotImplementedError
+    
+    # 1
+    vector = embedder.encode(question).tolist()
+    result = weaviate_client.query.get("Chunk", ["text", "chunk_id"]).with_near_vector({"vector": vector}).with_additional(["distance"]).with_limit(k).do()
+    
+    chunks_raw = result.get("data", {}).get("Get", {}).get("Chunk", [])
+    retrieved = []
+    for c in chunks_raw:
+        dist = c.get("_additional", {}).get("distance", 1.0)
+        retrieved.append({"text": c["text"], "chunk_id": c["chunk_id"], "distance": dist})
+
+    # 2
+    if not retrieved:
+        return {"answer": SENTINEL, "citations": [], "confidence": 0.0}
+
+    # 3
+    prompt, numbered = assemble_prompt(question, retrieved)
+
+    # 4
+    raw = generator(prompt, max_new_tokens=256, do_sample=False)[0]["generated_text"]
+
+    # 5
+    citations = extract_citations(raw, numbered)
+
+    # 6
+    if not citations:
+        return {"answer": SENTINEL, "citations": [], "confidence": 0.0}
+
+    # 7
+    scores = [c["score"] for c in citations]
+    confidence = sum(scores) / len(scores) if scores else 0.0
+    confidence = max(0.0, min(1.0, confidence))
+
+    # 8
+    return {"answer": raw, "citations": citations, "confidence": confidence}

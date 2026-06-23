@@ -19,4 +19,15 @@ def extract_entities(text: str, nlp) -> list[Entity]:
     """
     # TODO: call `doc = nlp(text)`, build Entity instances from
     #       `doc.ents`, and sort the result by `start` before returning.
-    raise NotImplementedError
+    doc = nlp(text)
+    entities = [
+        Entity(
+            text=ent.text,
+            label=ent.label_,
+            start=ent.start_char,
+            end=ent.end_char
+        )
+        for ent in doc.ents
+    ]
+    entities.sort(key=lambda e: e.start)
+    return entities
